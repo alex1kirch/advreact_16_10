@@ -13,9 +13,9 @@ class PersonRow extends Component {
     }
 
     render() {
-        const {style, person, connectDragSource, isDragging} = this.props
+        const {style, person, connectDragSource} = this.props
         return (
-            <div style = {{...style, opacity: isDragging ? 0.1 : 1}}>
+            <div style = {style}>
                 {connectDragSource(<h2>{person.firstName} {person.lastName}</h2>)}
                 <h3>{person.email}</h3>
             </div>

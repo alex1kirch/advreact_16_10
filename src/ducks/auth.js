@@ -3,6 +3,7 @@ import {Record} from 'immutable'
 import firebase from 'firebase'
 import {createSelector} from 'reselect'
 import {call, put, all, take} from 'redux-saga/effects'
+import {eventChannel} from 'redux-saga'
 import {replace} from 'react-router-redux'
 
 /**
@@ -18,6 +19,8 @@ export const SIGN_UP_ERROR = `${prefix}/SIGN_UP_ERROR`
 export const SIGN_IN_SUCCESS = `${prefix}/SIGN_IN_SUCCESS`
 export const SIGN_IN_REQUEST = `${prefix}/SIGN_IN_REQUEST`
 export const SIGN_IN_ERROR = `${prefix}/SIGN_IN_ERROR`
+
+export const SIGN_OUT_SUCCESS = `${prefix}/SIGN_OUT_SUCCESS`
 
 /**
  * Reducer
@@ -91,11 +94,6 @@ export function * signUpSaga() {
         try {
             const user = yield call([auth, auth.createUserWithEmailAndPassword], payload.email, payload.password)
             //const user = apply(auth, createUserWithEmailAndPassword, [email, password])
-
-            yield put({
-                type: SIGN_UP_SUCCESS,
-                payload: {user}
-            })
         } catch (error) {
             yield put({
                 type: SIGN_UP_ERROR,
@@ -126,11 +124,26 @@ export const signInSaga = function * () {
     }
 }
 
-export function * watchStatusChangeSaga() {
-    while (true) {
-        yield take(SIGN_IN_SUCCESS)
+const createAuthChannel = () => eventChannel(emit => firebase.auth().onAuthStateChanged(user => emit({ user })))
 
-        yield (put(replace('/admin')))
+export const watchStatusChange = function * () {
+    const chan = yield call(createAuthChannel)
+    while (true) {
+        const { user } = yield take(chan)
+
+        if (user) {
+            yield put({
+                type: SIGN_IN_SUCCESS,
+                payload: { user }
+            })
+
+        } else {
+            yield put({
+                type: SIGN_OUT_SUCCESS,
+                payload: { user }
+            })
+            yield put(replace('/auth/signin'))
+        }
     }
 }
 
@@ -138,6 +151,6 @@ export function * saga() {
     yield all([
         signUpSaga(),
         signInSaga(),
-        watchStatusChangeSaga()
+        watchStatusChange(),
     ])
 }

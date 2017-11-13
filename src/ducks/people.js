@@ -1,10 +1,11 @@
 import {appName} from '../config'
 import {Record, OrderedMap} from 'immutable'
 import {reset} from 'redux-form'
-import {put, call, takeEvery, all, select, fork, spawn, cancel, cancelled, race, take} from 'redux-saga/effects'
+import {put, call, takeEvery, all, select, spawn, cancelled, race, take, cancel} from 'redux-saga/effects'
 import {delay, eventChannel} from 'redux-saga'
 import firebase from 'firebase'
 import {createSelector} from 'reselect'
+import {LOCATION_CHANGE} from 'react-router-redux'
 import {fbToEntities} from './utils'
 
 /**
@@ -193,8 +194,21 @@ export const realtimePeopleSyncSaga = function * () {
     }
 }
 
+export const checkRouteChangeSaga = function * () {
+    let task = yield spawn(realtimePeopleSyncSaga)
+    while (true) {
+        const {payload} = yield take(LOCATION_CHANGE)
+        if (!payload.pathname.includes('people')) {
+            yield cancel(task)
+        } else if (!task) {
+            task = yield spawn(realtimePeopleSyncSaga)
+        }
+    }
+}
+
 export function * saga() {
-    yield spawn(realtimePeopleSyncSaga)
+//    yield spawn(realtimePeopleSyncSaga)
+    yield spawn(checkRouteChangeSaga)
 
     yield all([
         takeEvery(ADD_PERSON_REQUEST, addPersonSaga),
